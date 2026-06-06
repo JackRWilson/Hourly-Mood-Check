@@ -3,6 +3,7 @@ import '../database/database_helper.dart';
 import '../models/mood_entry.dart';
 import '../widgets/mood_chart.dart';
 import '../widgets/mood_history_list.dart';
+import 'settings_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -109,6 +110,22 @@ class _HomeScreenState extends State<HomeScreen> {
       appBar: AppBar(
         backgroundColor: Theme.of(context).colorScheme.inversePrimary,
         title: const Text('Hourly Mood'),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.settings),
+            // Navigator.push slides to a new screen
+            // Like opening a new window in Python tkinter
+            // When the user presses back, it slides back here
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const SettingsScreen(),
+                ),
+              );
+            },
+          ),
+        ],
       ),
       // SingleChildScrollView makes the whole screen scrollable
       // so it works even on small screens
