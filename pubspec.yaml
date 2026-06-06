@@ -41,6 +41,9 @@ dependencies:
   # Help Flutter find the right place to store the database file on the device.
   path: ^1.9.0
 
+  # Charting library for Flutter.
+  fl_chart: ^0.66.0
+
 dev_dependencies:
   flutter_test:
     sdk: flutter
