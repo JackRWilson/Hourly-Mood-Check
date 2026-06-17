@@ -4,6 +4,7 @@ import '../models/mood_entry.dart';
 import '../widgets/mood_chart.dart';
 import '../widgets/mood_history_list.dart';
 import 'settings_screen.dart';
+import '../constants/mood_scale.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -230,31 +231,119 @@ class _HomeScreenState extends State<HomeScreen> {
 
       // ── FAB for adding test entries ──────────────────────────
       // Floating Action Button — the + button in the bottom right.
-      // This is TEMPORARY — just for testing before Garmin sync works.
-      // We'll remove it once real sync is in place.
-      floatingActionButton: FloatingActionButton(
-        onPressed: _addTestEntry,
-        tooltip: 'Add test entry',
-        child: const Icon(Icons.add),
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: _showMoodPicker,
+        icon: const Icon(Icons.add),
+        label: const Text('Add Entry'),
       ),
     );
   }
 
-  // Adds a fake mood entry at the current time for testing.
+  // Shows a bottom sheet (panel that slides up from the bottom)
+  // letting the user manually add a mood entry.
   // This simulates what Garmin sync will do automatically later.
-  Future<void> _addTestEntry() async {
+  Future<void> _showMoodPicker() async {
+    await showModalBottomSheet(
+      context: context,
+      // Makes the sheet taller than the default
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) {
+        return Padding(
+          padding: const EdgeInsets.fromLTRB(16, 24, 16, 40),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Handle bar at the top — standard bottom sheet UI convention
+              Container(
+                width: 40, height: 4,
+                decoration: BoxDecoration(
+                  color: Colors.grey.shade300,
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+              const SizedBox(height: 20),
+
+              const Text(
+                'How have you been feeling\nthis last hour?',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 8),
+
+              // Show current time so it's clear what time this entry is for
+              Text(
+                _formatCurrentTime(),
+                style: const TextStyle(color: Colors.grey, fontSize: 13),
+              ),
+              const SizedBox(height: 24),
+
+              // One button for each mood option
+              // Like a for loop generating UI elements
+              ...MoodScale.options.map((option) {
+                return Padding(
+                  padding: const EdgeInsets.only(bottom: 8),
+                  child: SizedBox(
+                    width: double.infinity, // Full width button
+                    child: OutlinedButton(
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: option.color,
+                        side: BorderSide(color: option.color),
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                      onPressed: () async {
+                        // Close the bottom sheet first
+                        Navigator.pop(context);
+                        // Save the entry to the database
+                        await _saveMoodEntry(option.score);
+                      },
+                      child: Text(
+                        option.label,
+                        style: const TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ),
+                  ),
+                );
+              }),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  // Saves a mood entry with the current timestamp
+  // This is what Garmin sync will call automatically in the future —
+  // the database code stays exactly the same, we just call it
+  // from the sync handler instead of from this manual picker
+  Future<void> _saveMoodEntry(int score) async {
     final db = DatabaseHelper.instance;
-
-    // Cycle through scores so each tap adds a different mood
-    final scores = [3, 2, 1, 0, -1, -2, -3];
-    final nextScore = scores[_entries.length % scores.length];
-
     await db.insertMoodEntry(MoodEntry(
       timestamp: DateTime.now(),
-      moodScore: nextScore,
+      moodScore: score,
     ));
-
-    // Reload the data to reflect the new entry
+    // Reload the chart and history list with the new entry
     await _loadData();
+  }
+
+  // Formats the current time as "9:59 AM"
+  String _formatCurrentTime() {
+    final now = DateTime.now();
+    final hour = now.hour;
+    final minute = now.minute.toString().padLeft(2, '0');
+    final period = hour >= 12 ? 'PM' : 'AM';
+    final displayHour = hour > 12 ? hour - 12 : (hour == 0 ? 12 : hour);
+    return '$displayHour:$minute $period';
   }
 }
